@@ -131,9 +131,9 @@ async function loadMedia(){
 }
 function insertMediaInPost(asset){
  if(!user){authModal.showModal();return}
- resetEditor();modal.showModal();const field=$('#postContent'),url=mediaUrl(asset.storage_path);
- field.value='!['+asset.alt_text.replace(/]/g,'')+']('+url+')\n';
- $('#postModalTitle').textContent='مقال جديد — صورة من مكتبة الوسائط';field.focus();note('أُدرج رابط الصورة في محرر المقال. أضف النص ثم احفظ المقال.')
+ resetEditor();modal.showModal();const editor=$('#postContentEditor'),url=mediaUrl(asset.storage_path);
+ insertAtEditor(editor,'<img src="'+safeHtml(url)+'" alt="'+safeHtml(asset.alt_text)+'">');
+ $('#postModalTitle').textContent='مقال جديد — صورة من مكتبة الوسائط';editor.focus();note('أُدرجت الصورة في محرر المقال. أضف النص ثم احفظ المقال.')
 }
 async function deleteMedia(asset){
  if(!confirm('حذف هذه الصورة نهائياً من مكتبة الوسائط؟'))return;
