@@ -208,15 +208,16 @@ async function updateDashboardStats(){
  const set=(index,value)=>{const el=cards[index]?.querySelector('.stat-value');if(el)el.textContent=Number(value||0).toLocaleString('ar')};
  if(!user||!blog){cards.forEach((_,i)=>set(i,0));return}
  const [postRes,commentRes]=await Promise.all([
-  db.from('posts').select('status,view_count').eq('blog_id',blog.id).limit(1000),
-  db.from('comments').select('id',{count:'exact',head:true}).eq('blog_id',blog.id)
+  db.from('posts').select('id,status,view_count').eq('blog_id',blog.id).limit(1000)
  ]);
  if(postRes.error){note('تعذر تحديث ملخص المدونة: '+postRes.error.message);return}
  const rows=postRes.data||[],published=rows.filter(p=>p.status==='published').length,drafts=rows.filter(p=>p.status==='draft').length;
- const views=rows.reduce((sum,p)=>sum+Number(p.view_count||0),0);
- set(0,rows.length);set(1,views);set(2,commentRes.error?0:commentRes.count);set(3,drafts);
+ const views=rows.reduce((sum,p)=>sum+Number(p.view_count||0),0),postIds=rows.map(p=>p.id);
+ let commentCount=0;
+ if(postIds.length){const commentRes=await db.from('comments').select('id',{count:'exact',head:true}).in('post_id',postIds);if(!commentRes.error)commentCount=commentRes.count||0;else note('تعذر تحميل عدد التعليقات: '+commentRes.error.message)}
+ set(0,rows.length);set(1,views);set(2,commentCount);set(3,drafts);
  const navPosts=document.querySelector('.nav-link[href="#posts"] em');if(navPosts)navPosts.textContent=String(rows.length);
- const navComments=document.querySelector('.nav-link[href="#comments"] em');if(navComments)navComments.textContent=String(commentRes.error?0:commentRes.count);
+ const navComments=document.querySelector('.nav-link[href="#comments"] em');if(navComments)navComments.textContent=String(commentCount);
  const captions=cards.map(card=>card.querySelector('.stat-bottom span:last-child'));
  if(captions[0])captions[0].textContent=published+' منشور';
  if(captions[1])captions[1].textContent='مجموع المشاهدات المسجلة';
@@ -226,16 +227,23 @@ async function updateDashboardStats(){
 async function exportBlogData(){
  if(!user||!blog){authModal.showModal();note('سجّل الدخول أولاً لتصدير بياناتك.');return}
  note('جارٍ تجهيز نسخة JSON من بيانات المدونة…');
- const tables=['posts','pages','categories','tags','comments','navigation_menus','redirects','media_assets'];
- const results=await Promise.all(tables.map(async table=>{
-  const {data,error}=await db.from(table).select('*').eq('blog_id',blog.id).limit(5000);
-  if(error)throw new Error('تعذر تصدير '+table+': '+error.message);
-  return [table,data||[]]
- }));
- const payload={product:'Blogger Studio',exported_at:new Date().toISOString(),blog:{id:blog.id,name:blog.name,slug:blog.slug},data:Object.fromEntries(results)};
- const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json;charset=utf-8'});
- const url=window.URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='blogger-studio-backup-'+new Date().toISOString().slice(0,10)+'.json';document.body.append(a);a.click();a.remove();setTimeout(()=>window.URL.revokeObjectURL(url),1000);
- note('تم تجهيز نسخة JSON. احتفظ بها في مكان آمن.')
+ const {data:postRows,error:postError}=await db.from('posts').select('*').eq('blog_id',blog.id).limit(5000);
+ if(postError){note('تعذر تصدير المقالات: '+postError.message);return}
+ const postIds=(postRows||[]).map(p=>p.id);
+ const tables=['pages','categories','tags','navigation_menus','redirects','media_assets'];
+ try{
+  const results=await Promise.all(tables.map(async table=>{
+   const {data,error}=await db.from(table).select('*').eq('blog_id',blog.id).limit(5000);
+   if(error)throw new Error('تعذر تصدير '+table+': '+error.message);
+   return [table,data||[]]
+  }));
+  let comments=[];
+  if(postIds.length){const result=await db.from('comments').select('*').in('post_id',postIds).limit(5000);if(result.error)throw new Error('تعذر تصدير التعليقات: '+result.error.message);comments=result.data||[]}
+  const payload={product:'Blogger Studio',exported_at:new Date().toISOString(),blog:{id:blog.id,name:blog.name,slug:blog.slug},data:{posts:postRows||[],...Object.fromEntries(results),comments}};
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json;charset=utf-8'});
+  const url=window.URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='blogger-studio-backup-'+new Date().toISOString().slice(0,10)+'.json';document.body.append(a);a.click();a.remove();setTimeout(()=>window.URL.revokeObjectURL(url),1000);
+  note('تم تجهيز نسخة JSON. احتفظ بها في مكان آمن.')
+ }catch(error){note(error.message||'تعذر إنشاء النسخة الاحتياطية.')}
 }
 async function runSeoAudit(){
  if(!user||!blog){authModal.showModal();note('سجّل الدخول لفحص SEO لمقالاتك.');return}
