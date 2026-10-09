@@ -455,8 +455,8 @@ $('#closePreviewFooter')?.addEventListener('click',()=>previewModal.close());
 $('#rangeButton')?.addEventListener('click',()=>note('التحليلات ستضاف في مرحلة لاحقة.'));
 document.querySelectorAll('.nav-link,.tool-item,.app-footer a,.hero-link').forEach(a=>a.addEventListener('click',e=>{
  const h=a.getAttribute('href');
- if(h==='#taxonomy'||h==='#media'||h==='#pages'||h==='#dashboard'||h==='#posts'){sidebar.classList.remove('open');return}
- if(h==='#seo'){e.preventDefault();sidebar.classList.remove('open');void runSeoAudit();return}
+ if(['#taxonomy','#media','#pages','#dashboard','#posts','#comments','#settings','#menus','#appearance','#help'].includes(h)){sidebar.classList.remove('open');return}
+ if(h==='#seo'){e.preventDefault();sidebar.classList.remove('open');document.querySelector('#seo')?.scrollIntoView({behavior:'smooth',block:'start'});void runSeoAudit();return}
  if(h==='#backup'){e.preventDefault();sidebar.classList.remove('open');void exportBlogData();return}
  if(h==='#sitemap'){e.preventDefault();sidebar.classList.remove('open');window.open('./sitemap.xml','_blank','noopener');return}
  if(h==='#appearance'){e.preventDefault();sidebar.classList.remove('open');$('#themeToggle').click();note('تم تبديل مظهر لوحة التحكم.');return}
