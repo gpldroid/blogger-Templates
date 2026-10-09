@@ -234,7 +234,7 @@ async function exportBlogData(){
  }));
  const payload={product:'Blogger Studio',exported_at:new Date().toISOString(),blog:{id:blog.id,name:blog.name,slug:blog.slug},data:Object.fromEntries(results)};
  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json;charset=utf-8'});
- const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='blogger-studio-backup-'+new Date().toISOString().slice(0,10)+'.json';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+ const url=window.URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='blogger-studio-backup-'+new Date().toISOString().slice(0,10)+'.json';document.body.append(a);a.click();a.remove();setTimeout(()=>window.URL.revokeObjectURL(url),1000);
  note('تم تجهيز نسخة JSON. احتفظ بها في مكان آمن.')
 }
 async function runSeoAudit(){
