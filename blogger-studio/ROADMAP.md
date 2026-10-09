@@ -10,15 +10,15 @@
 
 ## Phase 2 — Authentication and workspace
 - [x] Email sign-up/login
-- [ ] Password reset flow
+- [x] Password reset email request (redirect URL configuration required; password update screen remains to do)
 - [x] Create blog workspace after signup
 - [ ] Blog switching and member invitations
 - [ ] Role-aware permissions (owner/admin/editor/author/moderator/viewer)
 
 ## Phase 3 — Content operations
-- [x] Basic plain-text article editor with draft saving
+- [x] Plain-text article create/edit with body and SEO metadata saving
 - [ ] Rich text/block editor, autosave, preview
-- [ ] Draft/review/scheduled/published/archived/trash lifecycle
+- [x] Basic article status controls: draft, review, published, archived, trash and restore\n- [ ] Scheduled publishing with a trusted server-side scheduler
 - [ ] Categories, tags, pages, internal links
 - [ ] Media uploads, alt text and safe content types
 - [ ] Comments moderation and spam workflow
