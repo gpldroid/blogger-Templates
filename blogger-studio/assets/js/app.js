@@ -54,11 +54,11 @@ form?.addEventListener('submit',async e=>{
  e.preventDefault();if(!user||!blog){note('سجّل الدخول أولاً.');return}
  const title=$('#postTitle').value.trim(),excerpt=$('#postExcerpt').value.trim(),body=$('#postContent').value.trim(),seoTitle=$('#seoTitle').value.trim(),seoDescription=$('#seoDescription').value.trim(),status=$('#postStatus').value;
  if(!title){$('#postTitle').focus();return}if(!body){note('أضف محتوى المقال قبل الحفظ.');$('#postContent').focus();return}
- const payload={title,excerpt,content:{type:'plain_text',text:body},content_html:'<p>'+safeHtml(body)+'</p>',seo_title:seoTitle||title,seo_description:seoDescription||excerpt,status,updated_at:new Date().toISOString()};
+ const wasEditing=Boolean(editingPostId),payload={title,excerpt,content:{type:'plain_text',text:body},content_html:'<p>'+safeHtml(body)+'</p>',seo_title:seoTitle||title,seo_description:seoDescription||excerpt,status,updated_at:new Date().toISOString()};
  if(status==='published')payload.published_at=new Date().toISOString();
  if(editingPostId){const {error}=await db.from('posts').update(payload).eq('id',editingPostId).eq('blog_id',blog.id);if(error){note('لم تُحفظ التعديلات: '+error.message);return}}
  else{let slug=slugify(title)+'-'+Math.random().toString(36).slice(2,6);Object.assign(payload,{blog_id:blog.id,author_id:user.id,slug});const {error}=await db.from('posts').insert(payload);if(error){note('لم تحفظ المقالة: '+error.message);return}}
- modal.close();resetEditor();await posts();note(editingPostId?'تم حفظ التعديلات.':'تم حفظ المقال بنجاح.')
+ modal.close();resetEditor();await posts();note(wasEditing?'تم حفظ التعديلات.':'تم حفظ المقال بنجاح.')
 });
 $('#rangeButton')?.addEventListener('click',()=>note('التحليلات ستضاف في مرحلة لاحقة.'));
 document.querySelectorAll('.nav-link,.tool-item,.app-footer a,.hero-link').forEach(a=>a.addEventListener('click',e=>{const h=a.getAttribute('href');if(h?.startsWith('#')&&!['#dashboard','#posts'].includes(h)){e.preventDefault();sidebar.classList.remove('open');note('هذا القسم ضمن مراحل التطوير التالية.')}}));
