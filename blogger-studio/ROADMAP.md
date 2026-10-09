@@ -20,6 +20,7 @@
 - [x] Rich text editor for articles and pages: headings, emphasis, lists, links, quotes and HTTPS images (paste as plain text; sanitized HTML saved)\n- [x] In-editor preview for article and static page content before saving (local preview; not a public URL)\n- [x] Local autosave backup for article/page editors, with explicit restore confirmation; backup stays in this browser until saved to the database
 - [x] Basic article status controls: draft, review, published, archived, trash and restore\n- [ ] Scheduled publishing with a trusted server-side scheduler
 - [x] Categories and tags: create and assign to articles\n- [x] Static pages: create/edit, SEO metadata, publish/draft/archive and restore to draft
+- [x] Public reader pages for published posts/pages using restricted database views and shareable URLs from the dashboard
 - [ ] Internal links
 - [x] Media library: image uploads, alt text, gallery, public URLs and safe content types
 - [ ] Comments moderation and spam workflow
