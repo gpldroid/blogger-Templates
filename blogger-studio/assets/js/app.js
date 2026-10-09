@@ -21,11 +21,11 @@ function sanitizeRichHtml(value){
    const href=child.getAttribute('href')||'',src=child.getAttribute('src')||'',alt=child.getAttribute('alt')||'';
    [...child.attributes].forEach(attr=>child.removeAttribute(attr.name));
    if(child.tagName==='A'){
-    if(!href||! /^(https?:|mailto:|tel:|#|\\/)/i.test(href)){child.replaceWith(...child.childNodes);return}
+    if(!href||!(href.startsWith('/')||/^(https?:|mailto:|tel:|#)/i.test(href))){child.replaceWith(...child.childNodes);return}
     child.setAttribute('href',href);child.setAttribute('rel','noopener noreferrer');child.setAttribute('target','_blank')
    }
    if(child.tagName==='IMG'){
-    if(!/^https:\/\//i.test(src)){child.remove();return}
+    if(!src.toLowerCase().startsWith('https://')){child.remove();return}
     child.setAttribute('src',src);child.setAttribute('alt',alt);child.setAttribute('loading','lazy')
    }
    cleanNode(child)
