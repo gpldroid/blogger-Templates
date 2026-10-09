@@ -60,6 +60,67 @@ async function addTaxonomy(type){
 }
 $('#categoryForm')?.addEventListener('submit',e=>{e.preventDefault();void addTaxonomy('category')});
 $('#tagForm')?.addEventListener('submit',e=>{e.preventDefault();void addTaxonomy('tag')});
+
+const MEDIA_BUCKET='blogger-media';
+function mediaUrl(path){return db.storage.from(MEDIA_BUCKET).getPublicUrl(path).data.publicUrl}
+async function loadMedia(){
+ const gallery=$('#mediaGallery');if(!gallery)return;
+ if(!user||!blog){gallery.replaceChildren();const p=document.createElement('p');p.className='muted';p.textContent='سجّل الدخول لعرض مكتبة الوسائط.';gallery.append(p);return}
+ gallery.replaceChildren();const loading=document.createElement('p');loading.className='muted';loading.textContent='جارٍ تحميل الصور…';gallery.append(loading);
+ const {data,error}=await db.from('media_assets').select('id,storage_path,original_name,mime_type,size_bytes,alt_text,width,height,created_at').eq('blog_id',blog.id).order('created_at',{ascending:false}).limit(100);
+ gallery.replaceChildren();if(error){const p=document.createElement('p');p.className='muted';p.textContent='تعذر تحميل الوسائط: '+error.message;gallery.append(p);return}
+ if(!data?.length){const p=document.createElement('p');p.className='muted';p.textContent='لا توجد صور بعد. ارفع أول صورة لاستخدامها في مقالاتك.';gallery.append(p);return}
+ data.forEach(asset=>{
+  const card=document.createElement('article');card.className='media-card';
+  const img=document.createElement('img');img.src=mediaUrl(asset.storage_path);img.alt=asset.alt_text;img.loading='lazy';img.decoding='async';
+  const info=document.createElement('div');info.className='media-card-info';
+  const name=document.createElement('b');name.textContent=asset.original_name;
+  const alt=document.createElement('p');alt.textContent=asset.alt_text;
+  const size=document.createElement('small');size.textContent=(asset.size_bytes/1024).toFixed(1)+' KB'+(asset.width&&asset.height?' · '+asset.width+'×'+asset.height:'');
+  const actions=document.createElement('div');actions.className='media-card-actions';
+  const insert=document.createElement('button');insert.type='button';insert.className='row-action';insert.textContent='إدراج في المقال';insert.addEventListener('click',()=>insertMediaInPost(asset));
+  const copy=document.createElement('button');copy.type='button';copy.className='row-action';copy.textContent='نسخ الرابط';copy.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(mediaUrl(asset.storage_path));note('تم نسخ رابط الصورة.')}catch(e){note('تعذر النسخ تلقائياً؛ افتح الصورة لنسخ الرابط يدوياً.');window.open(mediaUrl(asset.storage_path),'_blank','noopener')}});
+  const remove=document.createElement('button');remove.type='button';remove.className='row-action danger-action';remove.textContent='حذف';remove.addEventListener('click',()=>void deleteMedia(asset));
+  actions.append(insert,copy,remove);info.append(name,alt,size,actions);card.append(img,info);gallery.append(card)
+ })
+}
+function insertMediaInPost(asset){
+ if(!user){authModal.showModal();return}
+ resetEditor();modal.showModal();const field=$('#postContent'),url=mediaUrl(asset.storage_path);
+ field.value='!['+asset.alt_text.replace(/]/g,'')+']('+url+')\n';
+ $('#postModalTitle').textContent='مقال جديد — صورة من مكتبة الوسائط';field.focus();note('أُدرج رابط الصورة في محرر المقال. أضف النص ثم احفظ المقال.')
+}
+async function deleteMedia(asset){
+ if(!confirm('حذف هذه الصورة نهائياً من مكتبة الوسائط؟'))return;
+ const {error:storageError}=await db.storage.from(MEDIA_BUCKET).remove([asset.storage_path]);
+ if(storageError){note('تعذر حذف ملف الصورة: '+storageError.message);return}
+ const {error}=await db.from('media_assets').delete().eq('id',asset.id).eq('blog_id',blog.id);
+ if(error){note('حُذف الملف لكن تعذر حذف سجل الوسائط: '+error.message);return}
+ await loadMedia();note('تم حذف الصورة.')
+}
+$('#mediaUploadForm')?.addEventListener('submit',async e=>{
+ e.preventDefault();if(!user||!blog){authModal.showModal();note('سجّل الدخول أولاً.');return}
+ const file=$('#mediaFile').files?.[0],alt=$('#mediaAlt').value.trim(),button=$('#mediaUploadButton');
+ if(!file||!alt){note('اختر صورة واكتب النص البديل.');return}
+ const allowed=['image/jpeg','image/png','image/webp','image/gif','image/avif'];
+ if(!allowed.includes(file.type)){note('نوع الصورة غير مدعوم.');return}
+ if(file.size>5*1024*1024){note('حجم الصورة يتجاوز 5 ميغابايت.');return}
+ button.disabled=true;button.textContent='جارٍ الرفع…';
+ try{
+  const ext={'image/jpeg':'jpg','image/png':'png','image/webp':'webp','image/gif':'gif','image/avif':'avif'}[file.type];
+  const path=blog.id+'/'+user.id+'/'+crypto.randomUUID()+'.'+ext;
+  const {error:uploadError}=await db.storage.from(MEDIA_BUCKET).upload(path,file,{contentType:file.type,cacheControl:'3600',upsert:false});
+  if(uploadError)throw uploadError;
+  let width=null,height=null;
+  try{const dims=await new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve({width:image.naturalWidth,height:image.naturalHeight});image.onerror=reject;image.src=URL.createObjectURL(file)});width=dims.width;height=dims.height}catch(e){}
+  const {error:rowError}=await db.from('media_assets').insert({blog_id:blog.id,uploaded_by:user.id,storage_path:path,original_name:file.name,mime_type:file.type,size_bytes:file.size,alt_text:alt,width,height});
+  if(rowError){await db.storage.from(MEDIA_BUCKET).remove([path]);throw rowError}
+  $('#mediaUploadForm').reset();await loadMedia();note('تم رفع الصورة وإضافتها إلى المكتبة.')
+ }catch(error){note('فشل رفع الصورة: '+(error?.message||'خطأ غير معروف'))}
+ finally{button.disabled=false;button.textContent='↑ رفع الصورة'}
+});
+$('#refreshMediaButton')?.addEventListener('click',()=>void loadMedia());
+
 async function sync(){
  if(!db)return;
  const {data:{session}}=await db.auth.getSession();user=session?.user||null;blog=null;authUI();
@@ -67,7 +128,7 @@ async function sync(){
  const {data:blogs,error}=await db.from('blogs').select('id,name,slug').eq('owner_id',user.id).order('created_at').limit(1);
  if(error){note('خطأ تحميل المدونات: '+error.message);return}
  if(blogs.length)blog=blogs[0];else{const result=await db.from('blogs').insert({owner_id:user.id,name:'مدونتي الجديدة',slug:'blog-'+user.id.slice(0,8),language:'ar',timezone:'Africa/Casablanca'}).select('id,name,slug').single();if(result.error){note('تعذر إنشاء المدونة: '+result.error.message);return}blog=result.data}
- $('.workspace b').textContent=blog.name;await Promise.all([posts(),loadTaxonomy()])
+ $('.workspace b').textContent=blog.name;await Promise.all([posts(),loadTaxonomy(),loadMedia()])
 }
 function resetEditor(){editingPostId=null;form.reset();$('#postModalTitle').textContent='إنشاء مقال جديد';$('#saveDraft').textContent='حفظ كمسودة';$('#postStatus').value='draft'}
 function openPost(){if(!user){authModal.showModal();note('سجّل الدخول لحفظ المقال.');return}resetEditor();modal.showModal();setTimeout(()=>$('#postTitle').focus(),30)}
@@ -98,7 +159,7 @@ form?.addEventListener('submit',async e=>{
  modal.close();resetEditor();await posts();note(wasEditing?'تم حفظ التعديلات.':'تم حفظ المقال بنجاح.')
 });
 $('#rangeButton')?.addEventListener('click',()=>note('التحليلات ستضاف في مرحلة لاحقة.'));
-document.querySelectorAll('.nav-link,.tool-item,.app-footer a,.hero-link').forEach(a=>a.addEventListener('click',e=>{const h=a.getAttribute('href');if(h==='#taxonomy'){sidebar.classList.remove('open');return}if(h?.startsWith('#')&&!['#dashboard','#posts'].includes(h)){e.preventDefault();sidebar.classList.remove('open');note('هذا القسم ضمن مراحل التطوير التالية.')}}));
+document.querySelectorAll('.nav-link,.tool-item,.app-footer a,.hero-link').forEach(a=>a.addEventListener('click',e=>{const h=a.getAttribute('href');if(h==='#taxonomy'||h==='#media'){sidebar.classList.remove('open');return}if(h?.startsWith('#')&&!['#dashboard','#posts'].includes(h)){e.preventDefault();sidebar.classList.remove('open');note('هذا القسم ضمن مراحل التطوير التالية.')}}));
 function init(){if(!window.supabase?.createClient){note('تعذر تحميل Supabase JS. تحقق من اتصال الإنترنت.');return}db=window.supabase.createClient(URL,KEY);db.auth.onAuthStateChange(()=>{setTimeout(()=>void sync(),0)});void sync()}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
