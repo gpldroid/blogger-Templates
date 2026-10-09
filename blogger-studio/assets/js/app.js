@@ -12,7 +12,7 @@ function slugify(value){return value.normalize('NFKC').trim().toLowerCase().repl
 function safeHtml(value){return value.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/\n/g,'<br>')}
 async function posts(){
  if(!user||!blog)return;
- const {data,error}=await db.from('posts').select('id,title,slug,status,updated_at,view_count,excerpt,content,content_html,seo_title,seo_description,published_at').eq('blog_id',blog.id).order('updated_at',{ascending:false}).limit(100);
+ const {data,error}=await db.from('posts').select('id,title,slug,status,updated_at,view_count,excerpt,content,content_html,seo_title,seo_description,published_at,category_id').eq('blog_id',blog.id).order('updated_at',{ascending:false}).limit(100);
  if(error){note('تعذر تحميل المقالات: '+error.message);return}
  const rows=$('#postRows');rows.replaceChildren();
  if(!data?.length){rows.innerHTML='<tr><td colspan="5" style="padding:22px">لا توجد مقالات بعد. أنشئ مسودتك الأولى.</td></tr>';return}
