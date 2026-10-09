@@ -336,15 +336,17 @@ $('#menuForm')?.addEventListener('submit',async e=>{
  $('#menuForm').reset();$('#menuId').value='';$('#saveMenuButton').textContent='حفظ القائمة';await loadMenus();note('تم حفظ القائمة.')
 });
 $('#resetMenuButton')?.addEventListener('click',()=>{$('#menuForm').reset();$('#menuId').value='';$('#saveMenuButton').textContent='حفظ القائمة'});
-async function sync(){
+async function syncImpl(){
  if(!db)return;
  const {data:{session}}=await db.auth.getSession();user=session?.user||null;blog=null;authUI();
- if(!user){$('#postRows').innerHTML='<tr><td colspan="5" style="padding:22px">سجّل الدخول لعرض مقالاتك.</td></tr>';await updateDashboardStats();await Promise.all([loadMedia(),loadPages()]);return}
+ if(!user){$('#postRows').innerHTML='<tr><td colspan="5" style="padding:22px">سجّل الدخول لعرض مقالاتك.</td></tr>';await updateDashboardStats();await Promise.all([loadMedia(),loadPages(),loadComments(),loadMenus()]);return}
  const {data:blogs,error}=await db.from('blogs').select('id,name,slug,description,language,timezone').eq('owner_id',user.id).order('created_at').limit(1);
  if(error){note('خطأ تحميل المدونات: '+error.message);return}
  if(blogs.length)blog=blogs[0];else{const result=await db.from('blogs').insert({owner_id:user.id,name:'مدونتي الجديدة',slug:'blog-'+user.id.slice(0,8),language:'ar',timezone:'Africa/Casablanca'}).select('id,name,slug,description,language,timezone').single();if(result.error){note('تعذر إنشاء المدونة: '+result.error.message);return}blog=result.data}
  $('.workspace b').textContent=blog.name;fillBlogSettings();await Promise.all([posts(),loadTaxonomy(),loadMedia(),loadPages(),updateDashboardStats(),loadComments(),loadMenus()])
 }
+let syncPromise=null;
+function sync(){if(syncPromise)return syncPromise;syncPromise=syncImpl().finally(()=>{syncPromise=null});return syncPromise}
 function resetEditor(){editingPostId=null;form.reset();setRichEditor('postContent','');$('#postModalTitle').textContent='إنشاء مقال جديد';$('#saveDraft').textContent='حفظ كمسودة';$('#postStatus').value='draft'}
 function openPost(){if(!user){authModal.showModal();note('سجّل الدخول لحفظ المقال.');return}resetEditor();modal.showModal();restoreLocalDraft('post');setTimeout(()=>$('#postTitle').focus(),30)}
 async function openEdit(p){if(!user||!blog)return;resetEditor();editingPostId=p.id;$('#postModalTitle').textContent='تحرير المقال';$('#saveDraft').textContent='حفظ التعديلات';$('#postTitle').value=p.title||'';$('#postExcerpt').value=p.excerpt||'';setRichEditor('postContent',p.content_html||'',p.content?.text||'');$('#seoTitle').value=p.seo_title||'';$('#seoDescription').value=p.seo_description||'';$('#postStatus').value=['draft','review','published','archived'].includes(p.status)?p.status:'draft';$('#postCategory').value=p.category_id||'';const {data:links,error}=await db.from('post_tags').select('tag_id').eq('post_id',p.id);if(error){note('تعذر تحميل وسوم المقال: '+error.message);return}const selected=new Set((links||[]).map(x=>x.tag_id));document.querySelectorAll('input[name="postTags"]').forEach(input=>input.checked=selected.has(input.value));modal.showModal();restoreLocalDraft('post');setTimeout(()=>$('#postTitle').focus(),30)}
@@ -355,10 +357,10 @@ document.addEventListener('click',e=>{if(innerWidth<=900&&sidebar.classList.cont
 $('#themeToggle')?.addEventListener('click',()=>{const dark=document.body.classList.toggle('dark');$('#themeToggle').setAttribute('aria-label',dark?'تفعيل المظهر الفاتح':'تفعيل المظهر الداكن');try{localStorage.setItem('blogger-studio-theme',dark?'dark':'light')}catch(e){}});
 try{if(localStorage.getItem('blogger-studio-theme')==='dark')document.body.classList.add('dark')}catch(e){}
 $('#newPost')?.addEventListener('click',openPost);$('#heroNewPost')?.addEventListener('click',openPost);
-$('#authButton')?.addEventListener('click',async()=>{if(!db){note('تعذر تحميل Supabase JS.');return}if(user){const {error}=await db.auth.signOut();if(error)note(error.message);else{await sync();note('تم تسجيل الخروج')}}else authModal.showModal()});
-$('#signInButton')?.addEventListener('click',async()=>{const email=$('#authEmail').value.trim(),password=$('#authPassword').value;const {error}=await db.auth.signInWithPassword({email,password});if(error){note('تعذر تسجيل الدخول: '+error.message);return}authModal.close();await sync()});
+$('#authButton')?.addEventListener('click',async()=>{if(!db){note('تعذر تحميل Supabase JS.');return}if(user){const {error}=await db.auth.signOut();if(error)note(error.message);else{note('تم تسجيل الخروج')}}else authModal.showModal()});
+$('#signInButton')?.addEventListener('click',async()=>{const email=$('#authEmail').value.trim(),password=$('#authPassword').value;const {error}=await db.auth.signInWithPassword({email,password});if(error){note('تعذر تسجيل الدخول: '+error.message);return}authModal.close();note('تم تسجيل الدخول. جارٍ تحميل مساحة العمل.')});
 $('#resetPasswordButton')?.addEventListener('click',async()=>{const email=$('#authEmail').value.trim();if(!email){note('أدخل بريدك الإلكتروني أولاً.');$('#authEmail').focus();return}const {error}=await db.auth.resetPasswordForEmail(email,{redirectTo:location.href.split('#')[0]});if(error){note('تعذر إرسال رابط الاستعادة: '+error.message);return}note('إذا كان البريد مسجلاً، فسيصلك رابط استعادة كلمة المرور.')});
-$('#signUpButton')?.addEventListener('click',async()=>{const email=$('#authEmail').value.trim(),password=$('#authPassword').value;if(password.length<8){note('كلمة المرور يجب ألا تقل عن 8 أحرف.');return}const {data,error}=await db.auth.signUp({email,password});if(error){note('تعذر إنشاء الحساب: '+error.message);return}if(!data.session)note('تحقق من بريدك الإلكتروني ثم سجّل الدخول.');else{authModal.close();await sync()}});
+$('#signUpButton')?.addEventListener('click',async()=>{const email=$('#authEmail').value.trim(),password=$('#authPassword').value;if(password.length<8){note('كلمة المرور يجب ألا تقل عن 8 أحرف.');return}const {data,error}=await db.auth.signUp({email,password});if(error){note('تعذر إنشاء الحساب: '+error.message);return}if(!data.session)note('تحقق من بريدك الإلكتروني ثم سجّل الدخول.');else{authModal.close();note('تم إنشاء الحساب. جارٍ تحميل مساحة العمل.')}});
 form?.addEventListener('submit',async e=>{
  e.preventDefault();if(!user||!blog){note('سجّل الدخول أولاً.');return}
  syncRichField('postContent');const title=$('#postTitle').value.trim(),excerpt=$('#postExcerpt').value.trim(),bodyHtml=$('#postContent').value.trim(),body=richText(bodyHtml),seoTitle=$('#seoTitle').value.trim(),seoDescription=$('#seoDescription').value.trim(),status=$('#postStatus').value,categoryId=$('#postCategory').value||null,selectedTagIds=[...document.querySelectorAll('input[name="postTags"]:checked')].map(input=>input.value);
