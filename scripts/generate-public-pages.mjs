@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, writeFile, rm } from "node:fs/promises";
 import path from "node:path";
 
 const api = process.env.SUPABASE_URL;
@@ -71,6 +71,8 @@ async function save(item, kind) {
   return {url:site + "/" + folder + "/", lastmod:item.updated_at || item.published_at || item.created_at};
 }
 const [posts,pages] = await Promise.all([fetchRows("published_posts",postFields),fetchRows("published_pages",pageFields)]);
+// Remove only generated content trees so unpublished/deleted URLs cannot linger after redeployment.
+await Promise.all([rm(path.join(root,"posts"),{recursive:true,force:true}),rm(path.join(root,"pages"),{recursive:true,force:true})]);
 const urls = [];
 for (const p of posts) { const u = await save(p,"post"); if (u) urls.push(u); }
 for (const p of pages) { const u = await save(p,"page"); if (u) urls.push(u); }
@@ -79,24 +81,24 @@ const xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.s
   '\n</urlset>\n';
 await writeFile(path.join(root,"sitemap.xml"),xml,"utf8");
 
-const robots = "User-agent: *\\nAllow: /\\nDisallow: /assets/\\nSitemap: " + site + "/sitemap.xml\\n";
+const robots = "User-agent: *\nAllow: /\nDisallow: /assets/\nSitemap: " + site + "/sitemap.xml\n";
 await writeFile(path.join(root,"robots.txt"),robots,"utf8");
 
 const feedItems = posts
   .filter(post => post && post.slug && post.blog_id)
   .sort((a,b) => new Date(b.published_at || b.created_at || 0) - new Date(a.published_at || a.created_at || 0))
   .slice(0,100);
-const atom = '<?xml version="1.0" encoding="utf-8"?>\\n' +
-  '<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="ar">\\n' +
-  '<title>مدونة Blogger Studio</title>\\n' +
-  '<id>' + esc(site + "/") + '</id>\\n' +
-  '<link href="' + esc(site + "/") + '" rel="alternate"/>\\n' +
-  '<updated>' + new Date().toISOString() + '</updated>\\n' +
+const atom = '<?xml version="1.0" encoding="utf-8"?>\n' +
+  '<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="ar">\n' +
+  '<title>مدونة Blogger Studio</title>\n' +
+  '<id>' + esc(site + "/") + '</id>\n' +
+  '<link href="' + esc(site + "/") + '" rel="alternate"/>\n' +
+  '<updated>' + new Date().toISOString() + '</updated>\n' +
   feedItems.map(post => {
     const href = site + "/posts/" + encodeURIComponent(post.blog_id) + "/" + encodeURIComponent(post.slug) + "/";
     const stamp = post.updated_at || post.published_at || post.created_at || new Date().toISOString();
     return '<entry><title>' + esc(post.title || "مقال") + '</title><id>' + esc(href) + '</id><link href="' + esc(href) + '"/><updated>' + new Date(stamp).toISOString() + '</updated>' + (post.excerpt ? '<summary type="text">' + esc(post.excerpt) + '</summary>' : '') + '</entry>';
-  }).join("\\n") +
-  '\\n</feed>\\n';
+  }).join("\n") +
+  '\n</feed>\n';
 await writeFile(path.join(root,"feed.xml"),atom,"utf8");
 console.log("Generated " + posts.length + " public post(s), " + pages.length + " public page(s), sitemap.xml, robots.txt and feed.xml.");
