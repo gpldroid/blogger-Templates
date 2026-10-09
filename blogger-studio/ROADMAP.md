@@ -5,16 +5,18 @@
 - [x] Demo create-post modal (client preview only)
 - [x] Dark/light toggle
 - [x] First-pass PostgreSQL schema + RLS policies
-- [ ] Run SQL migration in dedicated Supabase project
+- [x] Run initial SQL migrations in dedicated Supabase project
 - [ ] Review/test RLS for each role and storage bucket
 
 ## Phase 2 — Authentication and workspace
-- [ ] Email sign-up/login/password reset
-- [ ] Create blog workspace after signup
+- [x] Email sign-up/login
+- [ ] Password reset flow
+- [x] Create blog workspace after signup
 - [ ] Blog switching and member invitations
 - [ ] Role-aware permissions (owner/admin/editor/author/moderator/viewer)
 
 ## Phase 3 — Content operations
+- [x] Basic plain-text article editor with draft saving
 - [ ] Rich text/block editor, autosave, preview
 - [ ] Draft/review/scheduled/published/archived/trash lifecycle
 - [ ] Categories, tags, pages, internal links
@@ -22,7 +24,8 @@
 - [ ] Comments moderation and spam workflow
 
 ## Phase 4 — SEO and webmaster tools
-- [ ] Slug/canonical/meta title/description/OG fields
+- [x] Auto-generated slug and SEO title/description fields for new drafts
+- [ ] Canonical/OG fields and public metadata rendering
 - [ ] Schema validation and previews
 - [ ] sitemap.xml and robots.txt generation strategy
 - [ ] Redirect manager and broken-link scanner
