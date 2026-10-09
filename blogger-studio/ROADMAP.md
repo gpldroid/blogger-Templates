@@ -17,7 +17,7 @@
 
 ## Phase 3 — Content operations
 - [x] Plain-text article create/edit with body and SEO metadata saving
-- [x] Rich text editor for articles and pages: headings, emphasis, lists, links, quotes and HTTPS images (paste as plain text; sanitized HTML saved)\n- [ ] Autosave and preview
+- [x] Rich text editor for articles and pages: headings, emphasis, lists, links, quotes and HTTPS images (paste as plain text; sanitized HTML saved)\n- [x] In-editor preview for article and static page content before saving (local preview; not a public URL)\n- [ ] Autosave
 - [x] Basic article status controls: draft, review, published, archived, trash and restore\n- [ ] Scheduled publishing with a trusted server-side scheduler
 - [x] Categories and tags: create and assign to articles\n- [x] Static pages: create/edit, SEO metadata, publish/draft/archive and restore to draft
 - [ ] Internal links
