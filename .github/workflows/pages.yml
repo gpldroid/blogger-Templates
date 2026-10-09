@@ -4,8 +4,11 @@ on:
     branches: [main]
     paths:
       - 'blogger-studio/**'
+      - 'scripts/generate-public-pages.mjs'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
+  schedule:
+    - cron: '23 3 * * *'
 permissions:
   contents: write
 concurrency:
@@ -22,7 +25,15 @@ jobs:
           test -f blogger-studio/index.html
           test -f blogger-studio/assets/css/app.css
           test -f blogger-studio/assets/js/app.js
+          test -f blogger-studio/view.html
           node --check blogger-studio/assets/js/app.js
+          node --check blogger-studio/assets/js/public-view.js
+          node --check scripts/generate-public-pages.mjs
+      - name: Generate static SEO pages
+        env:
+          SUPABASE_URL: https://zxlhwrmuebyfiksjrhrb.supabase.co
+          SUPABASE_PUBLISHABLE_KEY: sb_publishable_puKPQERSPv3lUowWlDio-Q_JVSZ9540
+        run: node scripts/generate-public-pages.mjs
       - name: Publish site
         uses: peaceiris/actions-gh-pages@v4
         with:
