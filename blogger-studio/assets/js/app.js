@@ -112,7 +112,7 @@ $('#mediaUploadForm')?.addEventListener('submit',async e=>{
   const {error:uploadError}=await db.storage.from(MEDIA_BUCKET).upload(path,file,{contentType:file.type,cacheControl:'3600',upsert:false});
   if(uploadError)throw uploadError;
   let width=null,height=null;
-  try{const dims=await new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve({width:image.naturalWidth,height:image.naturalHeight});image.onerror=reject;image.src=URL.createObjectURL(file)});width=dims.width;height=dims.height}catch(e){}
+  try{const dims=await new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve({width:image.naturalWidth,height:image.naturalHeight});image.onerror=reject;const objectUrl=window.URL.createObjectURL(file);image.onload=()=>{const result={width:image.naturalWidth,height:image.naturalHeight};window.URL.revokeObjectURL(objectUrl);resolve(result)};image.onerror=()=>{window.URL.revokeObjectURL(objectUrl);reject(new Error('تعذر قراءة أبعاد الصورة'))};image.src=objectUrl});width=dims.width;height=dims.height}catch(e){}
   const {error:rowError}=await db.from('media_assets').insert({blog_id:blog.id,uploaded_by:user.id,storage_path:path,original_name:file.name,mime_type:file.type,size_bytes:file.size,alt_text:alt,width,height});
   if(rowError){await db.storage.from(MEDIA_BUCKET).remove([path]);throw rowError}
   $('#mediaUploadForm').reset();await loadMedia();note('تم رفع الصورة وإضافتها إلى المكتبة.')
@@ -124,7 +124,7 @@ $('#refreshMediaButton')?.addEventListener('click',()=>void loadMedia());
 async function sync(){
  if(!db)return;
  const {data:{session}}=await db.auth.getSession();user=session?.user||null;blog=null;authUI();
- if(!user){$('#postRows').innerHTML='<tr><td colspan="5" style="padding:22px">سجّل الدخول لعرض مقالاتك.</td></tr>';return}
+ if(!user){$('#postRows').innerHTML='<tr><td colspan="5" style="padding:22px">سجّل الدخول لعرض مقالاتك.</td></tr>';await loadMedia();return}
  const {data:blogs,error}=await db.from('blogs').select('id,name,slug').eq('owner_id',user.id).order('created_at').limit(1);
  if(error){note('خطأ تحميل المدونات: '+error.message);return}
  if(blogs.length)blog=blogs[0];else{const result=await db.from('blogs').insert({owner_id:user.id,name:'مدونتي الجديدة',slug:'blog-'+user.id.slice(0,8),language:'ar',timezone:'Africa/Casablanca'}).select('id,name,slug').single();if(result.error){note('تعذر إنشاء المدونة: '+result.error.message);return}blog=result.data}
