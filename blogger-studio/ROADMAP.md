@@ -19,7 +19,7 @@
 - [x] Plain-text article create/edit with body and SEO metadata saving
 - [ ] Rich text/block editor, autosave, preview
 - [x] Basic article status controls: draft, review, published, archived, trash and restore\n- [ ] Scheduled publishing with a trusted server-side scheduler
-- [ ] Categories, tags, pages, internal links
+- [x] Categories and tags: create and assign to articles\n- [ ] Pages and internal links
 - [ ] Media uploads, alt text and safe content types
 - [ ] Comments moderation and spam workflow
 
