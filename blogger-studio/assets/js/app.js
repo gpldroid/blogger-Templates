@@ -57,10 +57,8 @@ document.querySelectorAll('.rich-edit-area').forEach(editor=>{
 });
 function publicContentHref(kind,slug){
  if(!blog||!slug)return '';
- const url=new URL('./view.html',document.baseURI);
- url.searchParams.set('blog',blog.id);
- url.searchParams.set('type',kind);
- url.searchParams.set('slug',slug);
+ const safeSlug=String(slug).split('/').map(encodeURIComponent).join('/');
+ const url=new URL('./'+(kind==='post'?'posts':'pages')+'/'+encodeURIComponent(blog.id)+'/'+safeSlug+'/',document.baseURI);
  url.hash='';
  return url.href;
 }
