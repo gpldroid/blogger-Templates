@@ -231,6 +231,22 @@ form?.addEventListener('submit',async e=>{
  if(selectedTagIds.length){const {error:tagError}=await db.from('post_tags').insert(selectedTagIds.map(tag_id=>({post_id:postId,tag_id})));if(tagError){note('تم حفظ المقال لكن تعذر ربط الوسوم: '+tagError.message);return}}
  modal.close();resetEditor();await posts();note(wasEditing?'تم حفظ التعديلات.':'تم حفظ المقال بنجاح.')
 });
+const previewModal=$('#contentPreviewModal');
+function showContentPreview(kind){
+ const isPage=kind==='page',field=isPage?'pageContent':'postContent',editor=editorFor(field);
+ syncRichField(field);
+ const title=(isPage?$('#pageTitle').value:$('#postTitle').value).trim()||(isPage?'صفحة بلا عنوان':'مقال بلا عنوان');
+ const seoTitle=(isPage?$('#pageSeoTitle').value:$('#seoTitle').value).trim();
+ const description=(isPage?$('#pageSeoDescription').value:$('#seoDescription').value).trim()||(isPage?'معاينة الصفحة قبل الحفظ':'معاينة المقال قبل الحفظ');
+ $('#previewTitle').textContent=title;
+ $('#previewDescription').textContent=(seoTitle?'عنوان SEO: '+seoTitle+' — ':'')+description;
+ $('#previewBody').innerHTML=sanitizeRichHtml(editor?.innerHTML||'');
+ previewModal.showModal()
+}
+$('#previewPostButton')?.addEventListener('click',()=>showContentPreview('post'));
+$('#previewPageButton')?.addEventListener('click',()=>showContentPreview('page'));
+$('#closePreviewButton')?.addEventListener('click',()=>previewModal.close());
+$('#closePreviewFooter')?.addEventListener('click',()=>previewModal.close());
 $('#rangeButton')?.addEventListener('click',()=>note('التحليلات ستضاف في مرحلة لاحقة.'));
 document.querySelectorAll('.nav-link,.tool-item,.app-footer a,.hero-link').forEach(a=>a.addEventListener('click',e=>{const h=a.getAttribute('href');if(h==='#taxonomy'||h==='#media'||h==='#pages'){sidebar.classList.remove('open');return}if(h?.startsWith('#')&&!['#dashboard','#posts'].includes(h)){e.preventDefault();sidebar.classList.remove('open');note('هذا القسم ضمن مراحل التطوير التالية.')}}));
 function init(){if(!window.supabase?.createClient){note('تعذر تحميل Supabase JS. تحقق من اتصال الإنترنت.');return}db=window.supabase.createClient(URL,KEY);db.auth.onAuthStateChange(()=>{setTimeout(()=>void sync(),0)});void sync()}
