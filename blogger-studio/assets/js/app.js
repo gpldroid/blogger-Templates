@@ -55,9 +55,18 @@ document.querySelectorAll('.rich-edit-area').forEach(editor=>{
   syncRichField(fieldId)
  }))
 });
+function publicContentHref(kind,slug){
+ if(!blog||!slug)return '';
+ const url=new URL('./view.html',document.baseURI);
+ url.searchParams.set('blog',blog.id);
+ url.searchParams.set('type',kind);
+ url.searchParams.set('slug',slug);
+ url.hash='';
+ return url.href;
+}
 async function posts(){
  if(!user||!blog)return;
- const {data,error}=await db.from('posts').select('id,title,slug,status,updated_at,view_count,excerpt,content,content_html,seo_title,seo_description,published_at,category_id').eq('blog_id',blog.id).order('updated_at',{ascending:false}).limit(100);
+ const {data,error}=await db.from('posts').select('id,title,slug,status,visibility,updated_at,view_count,excerpt,content,content_html,seo_title,seo_description,published_at,category_id').eq('blog_id',blog.id).order('updated_at',{ascending:false}).limit(100);
  if(error){note('تعذر تحميل المقالات: '+error.message);return}
  const rows=$('#postRows');rows.replaceChildren();
  if(!data?.length){rows.innerHTML='<tr><td colspan="5" style="padding:22px">لا توجد مقالات بعد. أنشئ مسودتك الأولى.</td></tr>';return}
@@ -68,6 +77,7 @@ async function posts(){
   const date=document.createElement('td');date.textContent=p.updated_at?new Date(p.updated_at).toLocaleString('ar'):'—';
   const views=document.createElement('td');views.className='number-cell';views.textContent=p.view_count||'—';
   const actions=document.createElement('td'),edit=document.createElement('button');edit.type='button';edit.className='row-action';edit.textContent=p.status==='trash'?'استعادة':'تحرير';edit.addEventListener('click',()=>p.status==='trash'?changeStatus(p,'draft'):openEdit(p));actions.append(edit);
+  if(p.status==='published'&&p.visibility==='public'){const publicLink=document.createElement('a');publicLink.className='row-action';publicLink.textContent='فتح عام';publicLink.href=publicContentHref('post',p.slug);publicLink.target='_blank';publicLink.rel='noopener noreferrer';actions.append(publicLink)}
   if(p.status!=='trash'){const trash=document.createElement('button');trash.type='button';trash.className='row-action danger-action';trash.textContent='حذف';trash.addEventListener('click',()=>moveToTrash(p));actions.append(trash)}
   tr.append(td,st,date,views,actions);rows.append(tr)
  })
@@ -174,7 +184,7 @@ async function loadPages(){
  const {data,error}=await db.from('pages').select('id,title,slug,status,updated_at,content,content_html,seo_title,seo_description').eq('blog_id',blog.id).order('updated_at',{ascending:false}).limit(100);
  rows.replaceChildren();if(error){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=5;td.textContent='تعذر تحميل الصفحات: '+error.message;tr.append(td);rows.append(tr);return}
  if(!data?.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=5;td.textContent='لا توجد صفحات بعد. أنشئ صفحتك الأولى.';tr.append(td);rows.append(tr);return}
- data.forEach(p=>{const tr=document.createElement('tr'),titleCell=document.createElement('td'),title=document.createElement('b'),slugCell=document.createElement('td'),statusCell=document.createElement('td'),status=document.createElement('span'),date=document.createElement('td'),actions=document.createElement('td'),edit=document.createElement('button');title.textContent=p.title;titleCell.append(title);slugCell.textContent='/'+p.slug;status.className='status '+p.status;status.textContent=({draft:'مسودة',published:'منشورة',archived:'مؤرشفة'})[p.status]||p.status;statusCell.append(status);date.textContent=p.updated_at?new Date(p.updated_at).toLocaleString('ar'):'—';edit.type='button';edit.className='row-action';edit.textContent='تحرير';edit.addEventListener('click',()=>openPageEdit(p));actions.append(edit);if(p.status!=='archived'){const archive=document.createElement('button');archive.type='button';archive.className='row-action danger-action';archive.textContent='أرشفة';archive.addEventListener('click',()=>void archivePage(p));actions.append(archive)}else{const restore=document.createElement('button');restore.type='button';restore.className='row-action';restore.textContent='إعادة كمسودة';restore.addEventListener('click',()=>void setPageStatus(p,'draft'));actions.append(restore)}tr.append(titleCell,slugCell,statusCell,date,actions);rows.append(tr)})
+ data.forEach(p=>{const tr=document.createElement('tr'),titleCell=document.createElement('td'),title=document.createElement('b'),slugCell=document.createElement('td'),statusCell=document.createElement('td'),status=document.createElement('span'),date=document.createElement('td'),actions=document.createElement('td'),edit=document.createElement('button');title.textContent=p.title;titleCell.append(title);if(p.status==='published'){const publicSlug=document.createElement('a');publicSlug.href=publicContentHref('page',p.slug);publicSlug.target='_blank';publicSlug.rel='noopener noreferrer';publicSlug.className='text-link';publicSlug.textContent='/'+p.slug;slugCell.append(publicSlug)}else slugCell.textContent='/'+p.slug;status.className='status '+p.status;status.textContent=({draft:'مسودة',published:'منشورة',archived:'مؤرشفة'})[p.status]||p.status;statusCell.append(status);date.textContent=p.updated_at?new Date(p.updated_at).toLocaleString('ar'):'—';edit.type='button';edit.className='row-action';edit.textContent='تحرير';edit.addEventListener('click',()=>openPageEdit(p));actions.append(edit);if(p.status==='published'){const publicLink=document.createElement('a');publicLink.className='row-action';publicLink.textContent='فتح عام';publicLink.href=publicContentHref('page',p.slug);publicLink.target='_blank';publicLink.rel='noopener noreferrer';actions.append(publicLink)}if(p.status!=='archived'){const archive=document.createElement('button');archive.type='button';archive.className='row-action danger-action';archive.textContent='أرشفة';archive.addEventListener('click',()=>void archivePage(p));actions.append(archive)}else{const restore=document.createElement('button');restore.type='button';restore.className='row-action';restore.textContent='إعادة كمسودة';restore.addEventListener('click',()=>void setPageStatus(p,'draft'));actions.append(restore)}tr.append(titleCell,slugCell,statusCell,date,actions);rows.append(tr)})
 }
 function openNewPage(){if(!user||!blog){authModal.showModal();note('سجّل الدخول أولاً.');return}editingPageId=null;pageForm.reset();setRichEditor('pageContent','');$('#pageId').value='';$('#pageModalTitle').textContent='إنشاء صفحة';$('#savePageButton').textContent='حفظ الصفحة';$('#pageStatus').value='draft';pageModal.showModal();restoreLocalDraft('page')}
 function openPageEdit(p){editingPageId=p.id;pageForm.reset();$('#pageId').value=p.id;$('#pageTitle').value=p.title||'';$('#pageSlug').value=p.slug||'';setRichEditor('pageContent',p.content_html||'',p.content?.text||'');$('#pageSeoTitle').value=p.seo_title||'';$('#pageSeoDescription').value=p.seo_description||'';$('#pageStatus').value=p.status||'draft';$('#pageModalTitle').textContent='تحرير الصفحة';$('#savePageButton').textContent='حفظ التعديلات';pageModal.showModal();restoreLocalDraft('page')}
