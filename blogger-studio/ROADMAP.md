@@ -20,7 +20,7 @@
 - [ ] Rich text/block editor, autosave, preview
 - [x] Basic article status controls: draft, review, published, archived, trash and restore\n- [ ] Scheduled publishing with a trusted server-side scheduler
 - [x] Categories and tags: create and assign to articles\n- [ ] Pages and internal links
-- [ ] Media uploads, alt text and safe content types
+- [x] Media library: image uploads, alt text, gallery, public URLs and safe content types
 - [ ] Comments moderation and spam workflow
 
 ## Phase 4 — SEO and webmaster tools
